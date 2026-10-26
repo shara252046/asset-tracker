@@ -6,31 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('assets', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('category'); // AC, computer, printer, vehicle
-    $table->string('brand')->nullable();
-    $table->string('serial_number')->unique();
-    $table->string('location');
-    $table->date('purchase_date');
-    $table->decimal('purchase_price', 12, 2)->nullable();
-    $table->date('warranty_end_date')->nullable();
-    $table->string('status')->default('active'); // active, under_repair, retired
-    $table->integer('service_interval_days')->default(90); // AC default 90 days
-    $table->date('next_service_due')->nullable(); // auto-updated after service completion
-    $table->timestamps();
-    });
+            $table->id();
+            $table->uuid('qr_token')->unique();
+            $table->string('name');
+            $table->enum('category', ['ac', 'computer', 'printer', 'vehicle']);
+            $table->string('brand')->nullable();
+            $table->string('serial_number')->nullable();
+            $table->string('location')->nullable();
+            $table->date('purchase_date')->nullable();
+            $table->decimal('purchase_price', 12, 2)->default(0);
+            $table->date('warranty_end_date')->nullable();
+            $table->enum('status', ['active', 'under_maintenance', 'retired'])->default('active');
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('assets');

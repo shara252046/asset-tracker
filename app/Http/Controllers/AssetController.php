@@ -2,42 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Asset;          // <-- ei line add korte hobe
+use App\Models\Asset;
 use Illuminate\Http\Request;
 
 class AssetController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $assets = Asset::latest()->get();          // <-- add
+        $assets = Asset::query()
+            ->when($request->search, function ($q, $s) {
+                $q->where(function ($q) use ($s) {
+                    $q->where('name', 'like', "%$s%")
+                      ->orWhere('serial_number', 'like', "%$s%")
+                      ->orWhere('location', 'like', "%$s%");
+                });
+            })
+            ->when($request->category, fn ($q, $c) => $q->where('category', $c))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
         return view('assets.index', compact('assets'));
     }
 
     public function create()
     {
-        return view('assets.create');               // <-- add
+        return view('assets.create', ['asset' => new Asset]);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required',
-            'category' => 'required',
-            'brand' => 'nullable',
-            'serial_number' => 'required|unique:assets',
-            'location' => 'required',
-            'purchase_date' => 'required|date',
-            'purchase_price' => 'nullable|numeric',
-            'warranty_end_date' => 'nullable|date',
-            'service_interval_days' => 'required|integer',
-        ]);
+        $asset = Asset::create($request->validate($this->rules()));
 
-        $data['next_service_due'] = now()->parse($data['purchase_date'])
-            ->addDays($data['service_interval_days']);
-
-        Asset::create($data);
-
-        return redirect()->route('assets.index');
+        return redirect()->route('assets.show', $asset)
+            ->with('success', 'Asset added successfully.');
     }
 
     public function show(Asset $asset)
@@ -45,34 +43,39 @@ class AssetController extends Controller
         return view('assets.show', compact('asset'));
     }
 
-    public function edit(Asset $asset)              // <-- string $id er bodole Asset $asset
+    public function edit(Asset $asset)
     {
         return view('assets.edit', compact('asset'));
     }
 
-    public function update(Request $request, Asset $asset)   // <-- Asset $asset
+    public function update(Request $request, Asset $asset)
     {
-        $data = $request->validate([
-            'name' => 'required',
-            'category' => 'required',
-            'brand' => 'nullable',
-            'serial_number' => 'required|unique:assets,serial_number,' . $asset->id,
-            'location' => 'required',
-            'purchase_date' => 'required|date',
-            'purchase_price' => 'nullable|numeric',
-            'warranty_end_date' => 'nullable|date',
-            'service_interval_days' => 'required|integer',
-        ]);
+        $asset->update($request->validate($this->rules()));
 
-        $asset->update($data);
-
-        return redirect()->route('assets.index');
+        return redirect()->route('assets.show', $asset)
+            ->with('success', 'Asset updated successfully.');
     }
 
-    public function destroy(Asset $asset)           // <-- Asset $asset
+    public function destroy(Asset $asset)
     {
         $asset->delete();
 
-        return redirect()->route('assets.index');
+        return redirect()->route('assets.index')
+            ->with('success', 'Asset deleted.');
+    }
+
+    private function rules(): array
+    {
+        return [
+            'name'              => 'required|string|max:255',
+            'category'          => 'required|in:ac,computer,printer,vehicle',
+            'brand'             => 'nullable|string|max:255',
+            'serial_number'     => 'nullable|string|max:255',
+            'location'          => 'nullable|string|max:255',
+            'purchase_date'     => 'nullable|date',
+            'purchase_price'    => 'required|numeric|min:0',
+            'warranty_end_date' => 'nullable|date',
+            'status'            => 'required|in:active,under_maintenance,retired',
+        ];
     }
 }

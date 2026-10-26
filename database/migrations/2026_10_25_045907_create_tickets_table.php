@@ -6,28 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-       Schema::create('tickets', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('asset_id')->constrained()->cascadeOnDelete();
-    $table->foreignId('issue_id')->nullable()->constrained()->nullOnDelete(); // null for auto-generated maintenance tickets
-    $table->foreignId('technician_id')->nullable()->constrained('users')->nullOnDelete();
-    $table->string('type')->default('corrective'); // corrective, preventive
-    $table->string('status')->default('open'); // open, in_progress, resolved
-    $table->text('resolution_note')->nullable();
-    $table->decimal('cost', 10, 2)->nullable();
-    $table->timestamp('resolved_at')->nullable();
-    $table->timestamps();
-});
+        Schema::create('tickets', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('asset_id')->constrained()->cascadeOnDelete();
+            $table->enum('type', ['issue', 'maintenance'])->default('issue');
+            $table->text('description');
+            $table->string('photo')->nullable();
+            $table->enum('urgency', ['low', 'medium', 'high'])->default('medium');
+            $table->enum('status', ['open', 'in_progress', 'resolved'])->default('open');
+            $table->string('reporter_name')->nullable();
+            $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tickets');
